@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clock</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            transition: background-color 0.5s ease;
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .light-theme {
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            color: #333;
+        }
+        
+        .dark-theme {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 20px;
+        }
+        
+        .clock-container {
+            position: relative;
+            width: 90vmin;
+            height: 90vmin;
+            max-width: 600px;
+            max-height: 600px;
+            margin: 0 auto;
+        }
+        
+        .digital-clock-container {
+            width: 100%;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            transition: all 0.5s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .light-digital {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+        
+        .dark-digital {
+            background: rgba(30, 30, 40, 0.9);
+            color: #f0f0f0;
+        }
+        
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .clock-toggle {
+            position: fixed;
+            top: 20px;
+            right: 85px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+        }
+        
+        .theme-toggle:hover, .clock-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+        
+        .light-toggle {
+            background: white;
+            color: #333;
+        }
+        
+        .dark-toggle {
+            background: #1e293b;
+            color: #facc15;
+        }
+        
+        .theme-icon {
+            font-size: 24px;
+            transition: color 0.3s ease;
+        }
+        
+        .digital-time {
+            font-family: 'JetBrains Mono', 'Consolas', 'Monaco', 'Menlo', monospace;
+            font-weight: bold;
+            text-align: center;
+            transition: all 0.3s ease;
+            line-height: 1.2;
+        }
+        
+        .digital-date {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            margin-top: 15px;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+        
+        .time-colon {
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite alternate;
+            opacity: 0;
+        }
+        
+        @keyframes twinkle {
+            0% { opacity: 0.2; }
+            100% { opacity: 0.8; }
+        }
+        
+        .clock-mode {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+        
+        .digital-mode {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="dark-theme">
+    <!-- 时钟模式切换按钮 -->
+    <div class="clock-toggle dark-toggle" id="clockToggle">
+        <i class="fa fa-clock-o theme-icon" id="clockIcon"></i>
+    </div>
+    
+    <!-- 主题切换按钮 -->
+    <div class="theme-toggle dark-toggle" id="themeToggle">
+        <i class="fa fa-moon-o theme-icon" id="themeIcon"></i>
+    </div>
+    
+    <!-- 星空背景容器 (仅在深色模式显示) -->
+    <div id="starsContainer" class="fixed inset-0 pointer-events-none z-0"></div>
+    
+    <div class="container">
+        <!-- 模拟时钟容器 -->
+        <div class="clock-mode" id="clockMode">
+            <div class="clock-container">
+                <canvas id="clock" class="w-full h-full"></canvas>
+            </div>
+        </div>
+        
+        <!-- 数字时钟容器 -->
+        <div class="digital-mode dark-digital" id="digitalMode">
+            <div class="digital-clock-container">
+                <div id="digitalTime" class="digital-time"></div>
+                <div id="digitalDate" class="digital-date"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 主题和模式状态
+        let isDarkMode = true;
+        let isClockMode = true;
+        
+        // DOM元素
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const clockToggle = document.getElementById('clockToggle');
+        const clockIcon = document.getElementById('clockIcon');
+        const starsContainer = document.getElementById('starsContainer');
+        const body = document.body;
+        const clockMode = document.getElementById('clockMode');
+        const digitalMode = document.getElementById('digitalMode');
+        const digitalTime = document.getElementById('digitalTime');
+        const digitalDate = document.getElementById('digitalDate');
+        
+        // 颜色配置
+        const lightColors = {
+            bg: '#f3f4f6',
+            clockFace: '#ffffff',
+            outerRing: '#f0f0f0',
+            border: '#333333',
+            text: '#333333',
+            hourHand: '#222222',
+            minuteHand: '#444444',
+            secondHand: '#ff4444'
+        };
+        
+        const darkColors = {
+            bg: '#0f172a',
+            clockFace: '#1e293b',
+            outerRing: '#1e293b',
+            border: '#94a3b8',
+            text: '#e2e8f0',
+            hourHand: '#cbd5e1',
+            minuteHand: '#e2e8f0',
+            secondHand: '#ef4444'
+        };
+        
+        // Canvas 元素
+        const canvas = document.getElementById('clock');
+        const ctx = canvas.getContext('2d');
+        
+        // 切换主题
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            
+            // 更新图标和按钮样式
+            if (isDarkMode) {
+                themeIcon.className = 'fa fa-sun-o theme-icon';
+                body.className = 'dark-theme';
+                themeToggle.className = 'theme-toggle dark-toggle';
+                clockToggle.className = 'clock-toggle dark-toggle';
+                digitalMode.className = 'digital-mode dark-digital';
+                createStars();
+                starsContainer.style.display = 'block';
+            } else {
+                themeIcon.className = 'fa fa-moon-o theme-icon';
+                body.className = 'light-theme';
+                themeToggle.className = 'theme-toggle light-toggle';
+                clockToggle.className = 'clock-toggle light-toggle';
+                digitalMode.className = 'digital-mode light-digital';
+                clearStars();
+                starsContainer.style.display = 'none';
+            }
+            
+            // 重新绘制时钟
+            if (isClockMode) drawClock();
+        }
+        
+        // 切换时钟模式
+        function toggleClockMode() {
+            isClockMode = !isClockMode;
+            
+            if (isClockMode) {
+                clockMode.style.display = 'flex';
+                digitalMode.style.display = 'none';
+                clockIcon.className = 'fa fa-clock-o theme-icon';
+                // 重新绘制时钟
+                resizeCanvas();
+            } else {
+                clockMode.style.display = 'none';
+                digitalMode.style.display = 'flex';
+                clockIcon.className = 'fa fa-exchange theme-icon';
+                // 更新数字时钟
+                updateDigitalClock();
+                adjustDigitalClockSize();
+            }
+        }
+        
+        // 创建星空效果
+        function createStars() {
+            clearStars();
+            const starCount = 200;
+            
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                
+                // 随机位置
+                const x = Math.random() * 100;
+                const y = Math.random() * 100;
+                
+                // 随机大小
+                const size = Math.random() * 3 + 1;
+                
+                // 随机亮度和闪烁延迟
+                const opacity = Math.random() * 0.7 + 0.3;
+                const delay = Math.random() * 5;
+                
+                star.style.left = `${x}%`;
+                star.style.top = `${y}%`;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.opacity = opacity;
+                star.style.animationDelay = `${delay}s`;
+                
+                starsContainer.appendChild(star);
+            }
+        }
+        
+        // 清除星空
+        function clearStars() {
+            starsContainer.innerHTML = '';
+        }
+        
+        // 调整Canvas尺寸
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const size = Math.min(container.clientWidth, container.clientHeight);
+            canvas.width = size;
+            canvas.height = size;
+            drawClock();
+        }
+        
+        // 绘制模拟时钟
+        function drawClock() {
+            const size = canvas.width;
+            const center = size / 2;
+            const radius = center * 0.9;
+            
+            // 获取当前主题颜色
+            const colors = isDarkMode ? darkColors : lightColors;
+            
+            // 清除画布
+            ctx.clearRect(0, 0, size, size);
+            
+            // 绘制时钟外框
+            ctx.beginPath();
+            ctx.arc(center, center, radius + 10, 0, Math.PI * 2);
+            ctx.fillStyle = colors.outerRing;
+            ctx.fill();
+            ctx.strokeStyle = colors.border;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // 绘制时钟表面
+            ctx.beginPath();
+            ctx.arc(center, center, radius, 0, Math.PI * 2);
+            ctx.fillStyle = colors.clockFace;
+            ctx.fill();
+            ctx.strokeStyle = colors.border;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            // 绘制刻度和数字
+            ctx.font = `bold ${center * 0.15}px Arial, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = colors.text;
+            
+            for (let i = 1; i <= 12; i++) {
+                const angle = (i * Math.PI / 6) - (Math.PI / 2);
+                const lineStart = radius * 0.85;
+                const lineEnd = radius * 0.95;
+                
+                // 计算刻度线位置
+                const x1 = center + Math.cos(angle) * lineStart;
+                const y1 = center + Math.sin(angle) * lineStart;
+                const x2 = center + Math.cos(angle) * lineEnd;
+                const y2 = center + Math.sin(angle) * lineEnd;
+                
+                // 绘制刻度线
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = colors.border;
+                ctx.stroke();
+                
+                // 计算数字位置
+                const numRadius = radius * 0.75;
+                const x = center + Math.cos(angle) * numRadius;
+                const y = center + Math.sin(angle) * numRadius;
+                
+                // 绘制数字
+                ctx.fillText(i.toString(), x, y);
+            }
+            
+            // 绘制小刻度
+            for (let i = 0; i < 60; i++) {
+                if (i % 5 !== 0) {
+                    const angle = (i * Math.PI / 30) - (Math.PI / 2);
+                    const lineStart = radius * 0.9;
+                    const lineEnd = radius * 0.94;
+                    
+                    const x1 = center + Math.cos(angle) * lineStart;
+                    const y1 = center + Math.sin(angle) * lineStart;
+                    const x2 = center + Math.cos(angle) * lineEnd;
+                    const y2 = center + Math.sin(angle) * lineEnd;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = colors.border;
+                    ctx.stroke();
+                }
+            }
+            
+            // 获取当前时间
+            const now = new Date();
+            const hours = now.getHours() % 12;
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            const milliseconds = now.getMilliseconds();
+            
+            // 计算指针角度
+            const hourAngle = (hours * Math.PI / 6) + (minutes * Math.PI / 360) + (seconds * Math.PI / 21600) - (Math.PI / 2);
+            const minuteAngle = (minutes * Math.PI / 30) + (seconds * Math.PI / 1800) + (milliseconds * Math.PI / 1800000) - (Math.PI / 2);
+            const secondAngle = (seconds * Math.PI / 30) + (milliseconds * Math.PI / 30000) - (Math.PI / 2);
+            
+            // 绘制时针
+            const hourLength = radius * 0.55;
+            ctx.beginPath();
+            ctx.moveTo(center, center);
+            ctx.lineTo(
+                center + Math.cos(hourAngle) * hourLength,
+                center + Math.sin(hourAngle) * hourLength
+            );
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = colors.hourHand;
+            ctx.stroke();
+            
+            // 绘制分针
+            const minuteLength = radius * 0.75;
+            ctx.beginPath();
+            ctx.moveTo(center, center);
+            ctx.lineTo(
+                center + Math.cos(minuteAngle) * minuteLength,
+                center + Math.sin(minuteAngle) * minuteLength
+            );
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = colors.minuteHand;
+            ctx.stroke();
+            
+            // 绘制秒针
+            const secondLength = radius * 0.85;
+            ctx.beginPath();
+            ctx.moveTo(center, center);
+            ctx.lineTo(
+                center + Math.cos(secondAngle) * secondLength,
+                center + Math.sin(secondAngle) * secondLength
+            );
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = colors.secondHand;
+            ctx.stroke();
+            
+            // 绘制中心圆点
+            ctx.beginPath();
+            ctx.arc(center, center, 10, 0, Math.PI * 2);
+            ctx.fillStyle = colors.secondHand;
+            ctx.fill();
+            
+            // 绘制中心内圆
+            ctx.beginPath();
+            ctx.arc(center, center, 5, 0, Math.PI * 2);
+            ctx.fillStyle = colors.clockFace;
+            ctx.fill();
+        }
+        
+        // 更新数字时钟
+        function updateDigitalClock() {
+            const now = new Date();
+            
+            // 获取时分秒并补零
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            // 显示时间，为冒号添加特殊类以实现闪烁效果
+            digitalTime.innerHTML = `${hours}<span class="time-colon">:</span>${minutes}<span class="time-colon">:</span>${seconds}`;
+            
+            // 显示日期
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            digitalDate.textContent = now.toLocaleDateString('zh-CN', options);
+        }
+        
+        // 调整数字时钟大小
+        function adjustDigitalClockSize() {
+            const viewportWidth = window.innerWidth;
+            let timeFontSize = '6rem';
+            let dateFontSize = '1.8rem';
+            
+            if (viewportWidth < 768) {
+                timeFontSize = '4rem';
+                dateFontSize = '1.2rem';
+            }
+            
+            digitalTime.style.fontSize = timeFontSize;
+            digitalDate.style.fontSize = dateFontSize;
+        }
+        
+        // 事件监听
+        themeToggle.addEventListener('click', toggleTheme);
+        clockToggle.addEventListener('click', toggleClockMode);
+        
+        // 初始化
+        function init() {
+            resizeCanvas();
+            createStars();
+            adjustDigitalClockSize();
+            
+            // 更新模拟时钟
+            setInterval(() => {
+                if (isClockMode) drawClock();
+            }, 50);
+            
+            // 更新数字时钟
+            setInterval(() => {
+                if (!isClockMode) updateDigitalClock();
+            }, 1000);
+            
+            // 初始更新
+            drawClock();
+            updateDigitalClock();
+            
+            // 监听窗口大小变化
+            window.addEventListener('resize', () => {
+                if (isClockMode) resizeCanvas();
+                adjustDigitalClockSize();
+            });
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
